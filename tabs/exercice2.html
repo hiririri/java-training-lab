@@ -190,7 +190,7 @@
         <div>长度：<code id="len">-</code>，初始化：<code>int i = 0, result = 0</code></div>
         <div>当前位置：<code id="pos">-</code>，当前位值：<code id="bit">-</code></div>
         <div>当前2的幂：<code id="power">-</code>，累计结果：<code id="result">0</code></div>
-        <div class="muted">转换规则：<code>result = result * 2 + 当前位值</code></div>
+        <div class="muted">转换规则：<code>result = result + 当前位值 × 2^位权</code></div>
       </div>
     </div>
 
@@ -223,15 +223,15 @@
         </div>
       </div>
       
-      <div style="margin:12px 0 6px 0;"><strong>🧮 算法原理：</strong></div>
-      <div style="margin:6px 0;">• 从左到右，每次把之前的结果"左移一位"（×2），然后加上当前位</div>
-      <div style="margin:6px 0;">• 就像十进制：123 = ((1×10 + 2) × 10) + 3</div>
-      <div style="margin:6px 0;">• 二进制：1010 = ((1×2 + 0) × 2 + 1) × 2 + 0</div>
+      <div style="margin:12px 0 6px 0;"><strong>🧮 位权算法原理：</strong></div>
+      <div style="margin:6px 0;">• 每个二进制位都有对应的位权：最右边是2⁰，向左依次是2¹、2²、2³...</div>
+      <div style="margin:6px 0;">• 直接计算每位对最终结果的贡献：位值 × 2^位权</div>
+      <div style="margin:6px 0;">• 把所有位的贡献值相加，就是最终的十进制结果</div>
       
       <div style="margin:12px 0 6px 0;"><strong>🎯 为什么这样计算？</strong></div>
-      <div style="margin:6px 0;">• 因为每向左一位，权重就增加一倍（×2）</div>
-      <div style="margin:6px 0;">• 所以处理新位时，要把之前的结果"升级"到更高的位权</div>
-      <div style="margin:6px 0;">• 然后加上当前位的贡献值（0或1）</div>
+      <div style="margin:6px 0;">• 二进制数的每一位代表不同的权重</div>
+      <div style="margin:6px 0;">• 最右边的位权重最小（2⁰=1），最左边的位权重最大</div>
+      <div style="margin:6px 0;">• 直接按位权计算，逻辑清晰，容易理解</div>
     </div>
   </div>
   
@@ -256,7 +256,7 @@
       int result = 0;
       boolean isValid = true; // 用于检查是否只含 0 和 1
 
-      // 从左到右遍历每一位
+      // 从左到右遍历每一位，使用位权算法
       for (int i = 0; i < binary.length(); i++) {
           char bit = binary.charAt(i);
 
@@ -267,7 +267,9 @@
           }
 
           int bitValue = bit - '0'; // '0'→0, '1'→1
-          result = result * 2 + bitValue;
+          int power = binary.length() - 1 - i; // 计算位权
+          int contribution = bitValue * (int)Math.pow(2, power); // 计算贡献值
+          result = result + contribution; // 累加贡献值
       }
 
       if (isValid) {
@@ -368,20 +370,15 @@
     }, 10);
   }
 
-  function printExplanation(step, bit, power, oldResult, newResult){
+  function printExplanation(step, bit, power, powerValue, contribution, oldResult, newResult){
     const bitValue = parseInt(bit);
-    const powerValue = Math.pow(2, power);
-    const contribution = bitValue * powerValue;
     
     let explanation = `步骤 ${step}: 处理位 s[${step-1}]='${bit}'\n`;
-    explanation += `  • 这位代表 2^${power} = ${powerValue}\n`;
-    if (bitValue === 1) {
-      explanation += `  • 因为这位是1，所以贡献值 = 1 × ${powerValue} = ${contribution}\n`;
-    } else {
-      explanation += `  • 因为这位是0，所以贡献值 = 0 × ${powerValue} = 0\n`;
-    }
-    explanation += `  • 算法：result = ${oldResult} × 2 + ${bitValue} = ${newResult}\n`;
-    explanation += `  • 解释：把之前的结果"左移一位"（×2），然后加上当前位值\n`;
+    explanation += `  • 当前位值：${bitValue}\n`;
+    explanation += `  • 位权：2^${power} = ${powerValue}\n`;
+    explanation += `  • 贡献值：${bitValue} × ${powerValue} = ${contribution}\n`;
+    explanation += `  • 算法：result = ${oldResult} + ${contribution} = ${newResult}\n`;
+    explanation += `  • 解释：直接加上当前位的贡献值\n`;
     
     printLog(explanation);
   }
@@ -391,9 +388,12 @@
       const bit = s[i];
       const power = s.length - 1 - i;
       const bitValue = parseInt(bit);
+      const powerValue = Math.pow(2, power);
+      const contribution = bitValue * powerValue;
       const oldResult = result;
       
-      result = result * 2 + bitValue;
+      // 位权算法：直接加上当前位的贡献值
+      result = result + contribution;
       
       // 视觉：当前处理的 cell 变绿
       const current = board.querySelector(`.cell[data-idx="${i}"]`);
@@ -402,8 +402,8 @@
         current.classList.add('processed');
       }
 
-      // 使用新的详细解释函数
-      printExplanation(i + 1, bit, power, oldResult, result);
+      // 使用位权解释函数
+      printExplanation(i + 1, bit, power, powerValue, contribution, oldResult, result);
       i++;
       
       lenOut.textContent = s.length;
@@ -422,9 +422,9 @@
       // 完成
       printLog(`\n🎉 完成！最终结果 = ${result}`, true);
       printLog(`\n📚 总结：`);
-      printLog(`• 我们使用算法：result = result × 2 + 当前位值`);
-      printLog(`• 这个算法的原理是：每次把之前的结果"左移一位"，然后加上当前位`);
-      printLog(`• 就像十进制数一样，二进制数也是按位权展开的`);
+      printLog(`• 我们使用位权算法：result = result + 当前位值 × 2^位权`);
+      printLog(`• 每个二进制位都有对应的位权：最右边是2^0，向左依次是2^1、2^2、2^3...`);
+      printLog(`• 最终结果就是所有位的贡献值相加`);
       
       stepBtn.disabled = true;
       autoBtn.textContent = '自动播放';
@@ -434,7 +434,7 @@
       finalResult.style.display = 'block';
       decimalValue.textContent = result;
       
-      // 显示计算过程
+      // 显示计算过程（按位权展开）
       let calcText = '';
       let hasNonZero = false;
       for (let k = 0; k < s.length; k++) {
@@ -478,7 +478,7 @@
     printLog(`  • 字符串长度：${s.length}`);
     printLog(`  • 从最左边开始：i=0`);
     printLog(`  • 初始结果：result=0`);
-    printLog(`  • 转换规则：result = result × 2 + 当前位值`);
+    printLog(`  • 转换规则：result = result + 当前位值 × 2^位权`);
     printLog(`\n开始逐步转换：`);
   });
 
