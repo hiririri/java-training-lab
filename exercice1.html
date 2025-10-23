@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>练习1：字符串反转 · 动态演示</title>
+<style>
+  :root{
+    --box:64px;            /* 每个字符方块的尺寸 */
+    --gap:12px;            /* 方块间距 */
+  }
+  body{
+    font-family: "Segoe UI","PingFang SC","Microsoft Yahei",system-ui,-apple-system,sans-serif;
+    background:#f6f7fb; color:#222; margin:0; padding:24px;
+  }
+  h1{ margin:0 0 12px; font-size:20px; }
+  .card{ background:#fff; border-radius:12px; box-shadow:0 8px 24px rgba(0,0,0,.06); padding:16px; }
+  .row{ display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+  input[type=text]{ padding:10px 12px; border:1px solid #ddd; border-radius:8px; min-width:240px; font-size:16px; }
+  button{
+    padding:10px 14px; border:0; border-radius:10px; cursor:pointer; font-size:14px;
+    background:#2b6cff; color:#fff;
+  }
+  button.ghost{ background:#eef2ff; color:#2b6cff; }
+  button:disabled{ opacity:.6; cursor:not-allowed; }
+  .board-wrap{ margin-top:18px; overflow-x:auto; padding-bottom:8px; }
+  .board{
+    display:flex; align-items:flex-start; gap:var(--gap); position:relative; padding:12px 0 38px;
+    min-height: calc(var(--box) + 46px);
+  }
+  .cell{
+    width:var(--box); height:var(--box); border-radius:14px; border:2px solid #d9dff0;
+    background:#fff; display:flex; align-items:center; justify-content:center;
+    font-size:26px; font-weight:600; position:relative; flex:0 0 auto;
+  }
+  .cell.dim{ opacity:.35; }
+  .index{
+    position:absolute; bottom:-28px; left:0; width:100%; text-align:center; font-size:12px; color:#667;
+  }
+  /* 指针箭头 */
+  .pointer{
+    position:absolute; top:-30px; width:0; height:0; border-left:10px solid transparent;
+    border-right:10px solid transparent; border-bottom:12px solid #2b6cff; transition:transform .25s ease;
+  }
+  .pointer-label{
+    position:absolute; top:-50px; transform:translateX(-50%); background:#2b6cff; color:#fff;
+    padding:2px 8px; border-radius:999px; font-size:12px; white-space:nowrap;
+  }
+  .status{ margin-top:16px; line-height:1.9; }
+  code{ background:#f1f3fb; border-radius:6px; padding:2px 6px; }
+  .steps{ 
+    margin-top:10px; font-family:ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; 
+    white-space:pre-wrap; height:400px; overflow-y:auto; padding:12px; 
+    background:#f8fafc; border-radius:8px; border:1px solid #e2e8f0;
+    font-size:13px; line-height:1.4;
+  }
+  .steps::-webkit-scrollbar {
+    width: 8px;
+  }
+  .steps::-webkit-scrollbar-track {
+    background: #f1f5f9;
+    border-radius: 4px;
+  }
+  .steps::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 4px;
+  }
+  .steps::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
+  }
+  .muted{ color:#6b7280; }
+  .code-btn {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    margin-left: 8px;
+  }
+  .code-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+  }
+  .code-display {
+    margin-top: 16px;
+    padding: 16px;
+    background: #1e293b;
+    border-radius: 8px;
+    border: 1px solid #334155;
+    display: none;
+  }
+  .code-display pre {
+    color: #e2e8f0;
+    font-family: 'Fira Code', 'Monaco', 'Consolas', monospace;
+    font-size: 13px;
+    line-height: 1.5;
+    margin: 0;
+    white-space: pre-wrap;
+  }
+  .code-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid #334155;
+  }
+  .code-title {
+    color: #f1f5f9;
+    font-weight: 600;
+    font-size: 14px;
+  }
+  .copy-btn {
+    background: #3b82f6;
+    color: white;
+    border: none;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    cursor: pointer;
+    transition: background 0.2s ease;
+  }
+  .copy-btn:hover {
+    background: #2563eb;
+  }
+  
+  /* 响应式设计 */
+  @media (max-width: 768px) {
+    .flex-layout {
+      flex-direction: column !important;
+    }
+    .flex-layout > div:last-child {
+      border-left: none !important;
+      padding-left: 0 !important;
+      border-top: 2px solid #e2e8f0;
+      padding-top: 20px;
+      margin-top: 20px;
+    }
+    .steps {
+      height: 250px !important;
+    }
+  }
+</style>
+</head>
+<body>
+
+<h1>练习1：反转输出字符串（动态过程）</h1>
+
+<div class="card">
+  <div class="row">
+    <input id="txt" type="text" placeholder="例如：hello" />
+    <div style="font-size:12px; color:#666; margin-top:4px;">
+      试试这些例子：hello(olleh), world(dlrow), abc(cba), 123(321)
+    </div>
+    <button id="start">开始</button>
+    <button id="step" class="ghost" disabled>下一步</button>
+    <button id="auto" class="ghost" disabled>自动播放</button>
+    <button id="clear" class="ghost">清空日志</button>
+    <button id="reset" class="ghost" disabled>重置</button>
+    <button id="showCode" class="code-btn">显示Java代码答案</button>
+  </div>
+
+  <!-- 左右分栏布局 -->
+  <div class="flex-layout" style="display:flex; gap:20px; margin-top:18px;">
+    <!-- 左侧：可视化演示 -->
+    <div style="flex:1;">
+      <div class="board-wrap">
+        <div id="board" class="board">
+          <!-- 动态注入：方块 + 指针 -->
+        </div>
+      </div>
+
+      <div class="status">
+        <div>长度：<code id="len">-</code>，初始化：<code>int i = s.length() - 1</code> → <code id="i">-</code></div>
+        <div>当前字符：<code id="cur">-</code></div>
+        <div>累计 reversed：<code id="rev">""</code></div>
+        <div class="muted">反转规则：<code>reversed = reversed + s.charAt(i); i--;</code></div>
+      </div>
+    </div>
+
+    <!-- 右侧：执行日志 -->
+    <div style="flex:1; border-left:2px solid #e2e8f0; padding-left:20px;">
+      <div style="font-weight:600; color:#374151; margin-bottom:8px;">📝 执行日志：</div>
+      <div class="steps" id="log"></div>
+    </div>
+  </div>
+
+  <div class="explanation" style="margin-top:16px; padding:12px; background:#f8fafc; border-radius:8px; border-left:4px solid #3b82f6;">
+    <div style="font-weight:600; color:#1e40af; margin-bottom:8px;">💡 为什么要用这个算法？</div>
+    <div style="font-size:14px; line-height:1.6; color:#374151;">
+      <div><strong>🔄 字符串反转的原理：</strong></div>
+      <div style="margin:6px 0;">• 反转就是把字符串的字符顺序完全颠倒</div>
+      <div style="margin:6px 0;">• 例如：hello → olleh（h和o交换，e和l交换，中间的l保持不变）</div>
+      
+      <div style="margin:8px 0; padding:8px; background:#fff; border-radius:6px; font-family:monospace;">
+        <div style="text-align:center; margin-bottom:4px;"><strong>反转过程（以hello为例）</strong></div>
+        <div style="display:flex; justify-content:space-around; text-align:center;">
+          <div>原字符串: h e l l o</div>
+        </div>
+        <div style="display:flex; justify-content:space-around; text-align:center; color:#2b6cff;">
+          <div>索引位置: 0 1 2 3 4</div>
+        </div>
+        <div style="display:flex; justify-content:space-around; text-align:center; color:#10b981;">
+          <div>反转顺序: 4 3 2 1 0</div>
+        </div>
+        <div style="text-align:center; margin-top:4px; color:#ef4444;">
+          结果: o l l e h
+        </div>
+      </div>
+      
+      <div style="margin:12px 0 6px 0;"><strong>🧮 算法原理：</strong></div>
+      <div style="margin:6px 0;">• 从最右边开始（索引 = length-1），向左逐个取字符</div>
+      <div style="margin:6px 0;">• 每取一个字符，就添加到结果字符串的末尾</div>
+      <div style="margin:6px 0;">• 索引递减（i--），直到处理完所有字符</div>
+      
+      <div style="margin:12px 0 6px 0;"><strong>🎯 为什么从右到左？</strong></div>
+      <div style="margin:6px 0;">• 因为我们要把最右边的字符放到最左边</div>
+      <div style="margin:6px 0;">• 从右到左遍历，正好符合反转的逻辑</div>
+      <div style="margin:6px 0;">• 每次添加字符到结果末尾，自然形成反转效果</div>
+    </div>
+  </div>
+  
+  <div id="finalResult" class="result" style="display:none; margin-top:16px; padding:12px; background:#f0f9ff; border-radius:8px; border-left:4px solid #2b6cff;">
+    <div style="font-size:18px; font-weight:600; color:#1e40af;">
+      最终结果：<span id="reversedValue">-</span>
+    </div>
+    <div style="margin-top:8px; font-size:14px; color:#374151;">
+      原字符串：<span id="originalValue">-</span> → 反转后：<span id="finalReversed">-</span>
+    </div>
+  </div>
+
+  <!-- Java代码答案显示区域 -->
+  <div id="codeDisplay" class="code-display">
+    <div class="code-header">
+      <div class="code-title">📝 Java代码答案 - 字符串反转</div>
+      <button class="copy-btn" onclick="copyCode()">复制代码</button>
+    </div>
+    <pre id="javaCode">
+    public static void exercice1() {
+      Scanner sc = new Scanner(System.in);
+      System.out.print("请输入一个字符串: ");
+      String s = sc.nextLine();   // 读取整行输入
+
+      // 手动反转字符串
+      String reversed = "";
+      for (int i = s.length() - 1; i >= 0; i--) {
+          reversed += s.charAt(i);
+      }
+
+      System.out.println("原字符串: " + s);
+      System.out.println("反转后: " + reversed);
+    }
+    </pre>
+  </div>
+</div>
+
+<script>
+  const $ = sel => document.querySelector(sel);
+  const txt = $('#txt'), startBtn = $('#start'), stepBtn = $('#step'),
+        autoBtn = $('#auto'), clearBtn = $('#clear'), resetBtn = $('#reset'),
+        showCodeBtn = $('#showCode'), codeDisplay = $('#codeDisplay'),
+        board = $('#board'), lenOut = $('#len'), iOut = $('#i'),
+        curOut = $('#cur'), revOut = $('#rev'), log = $('#log'),
+        finalResult = $('#finalResult'), reversedValue = $('#reversedValue'),
+        originalValue = $('#originalValue'), finalReversed = $('#finalReversed');
+
+  let s = "", i = -1, reversed = "", timer = null;
+
+  function clearBoard(){
+    board.innerHTML = "";
+  }
+
+  function renderBoard(){
+    clearBoard();
+    // 指针
+    const pointer = document.createElement('div');
+    pointer.className = 'pointer';
+    const plabel = document.createElement('div');
+    plabel.className = 'pointer-label';
+    plabel.textContent = 'i';
+    board.appendChild(pointer);
+    board.appendChild(plabel);
+
+    // 方块
+    for (let k=0; k<s.length; k++){
+      const div = document.createElement('div');
+      div.className = 'cell' + (k>i ? ' dim':'' );
+      div.dataset.idx = k;
+      div.innerHTML = `<span>${s[k]}</span><div class="index">${k}</div>`;
+      board.appendChild(div);
+    }
+
+    // 定位指针到第 i 个方块上方
+    movePointer();
+  }
+
+  function movePointer(){
+    const pointer = board.querySelector('.pointer');
+    const label = board.querySelector('.pointer-label');
+    if (i < 0) {
+      // 移到最左侧之外
+      pointer.style.transform = `translateX(${-20}px)`;
+      label.style.left = `0px`;
+      label.style.top = `-50px`;
+      return;
+    }
+    const target = Array.from(board.querySelectorAll('.cell')).find(c => +c.dataset.idx === i);
+    if (!target) return;
+    const rect = target.getBoundingClientRect();
+    const boardRect = board.getBoundingClientRect();
+    // 指针水平居中于目标 cell
+    const centerX = rect.left - boardRect.left + rect.width/2;
+    pointer.style.transform = `translateX(${centerX - 10}px)`;
+    label.style.left = `${centerX}px`;
+  }
+
+  function setButtons(running){
+    stepBtn.disabled = !running;
+    autoBtn.disabled = !running;
+    resetBtn.disabled = !running;
+  }
+
+  function printLog(line, addTimestamp = false){
+    const timestamp = addTimestamp ? `[${new Date().toLocaleTimeString()}] ` : '';
+    log.textContent += timestamp + line + '\n';
+    // 确保日志区域滚动到底部
+    setTimeout(() => {
+      log.scrollTop = log.scrollHeight;
+    }, 10);
+  }
+
+  function printExplanation(step, ch, pos, oldReversed, newReversed){
+    let explanation = `步骤 ${step}: 处理字符 s[${pos}]='${ch}'\n`;
+    explanation += `  • 这是从右数第${step}个字符\n`;
+    explanation += `  • 算法：reversed = "${oldReversed}" + '${ch}' = "${newReversed}"\n`;
+    explanation += `  • 解释：把当前字符添加到结果字符串的末尾\n`;
+    explanation += `  • 索引递减：i = ${pos} → ${pos-1}\n`;
+    
+    printLog(explanation);
+  }
+
+  function stepOnce(){
+    if (i >= 0){
+      const ch = s[i];
+      const oldReversed = reversed;
+      reversed += ch;
+      
+      // 视觉：右侧已处理的 cell 变淡
+      const processed = board.querySelector(`.cell[data-idx="${i}"]`);
+      if (processed) processed.classList.add('dim');
+
+      // 使用新的详细解释函数
+      const step = s.length - i;
+      printExplanation(step, ch, i, oldReversed, reversed);
+      
+      i--;
+      lenOut.textContent = s.length;
+      iOut.textContent = i;
+      curOut.textContent = (i >= 0 ? s[i] : '—');
+      revOut.textContent = `"${reversed}"`;
+      movePointer();
+    } else {
+      // 完成
+      printLog(`\n🎉 完成！最终结果 reversed = "${reversed}"`, true);
+      printLog(`\n📚 总结：`);
+      printLog(`• 我们使用算法：reversed = reversed + s.charAt(i); i--`);
+      printLog(`• 这个算法的原理是：从右到左遍历，把字符添加到结果末尾`);
+      printLog(`• 这样自然形成了字符串的反转效果`);
+      
+      // 显示最终结果
+      finalResult.style.display = 'block';
+      reversedValue.textContent = reversed;
+      originalValue.textContent = s;
+      finalReversed.textContent = reversed;
+      
+      stepBtn.disabled = true;
+      autoBtn.textContent = '自动播放';
+      if (timer){ clearInterval(timer); timer=null; }
+    }
+  }
+
+  startBtn.addEventListener('click', ()=>{
+    s = (txt.value ?? "").toString();
+    if (!s.length){ alert('请输入要反转的字符串'); return; }
+    i = s.length - 1; reversed = ""; log.textContent = "";
+    lenOut.textContent = s.length; iOut.textContent = i; curOut.textContent = s[i]; revOut.textContent = '""';
+    finalResult.style.display = 'none';
+    renderBoard();
+    setButtons(true);
+    stepBtn.focus();
+    printLog(`🚀 开始反转字符串 "${s}"`, true);
+    printLog(`📋 初始化：`);
+    printLog(`  • 字符串长度：${s.length}`);
+    printLog(`  • 从最右边开始：i=length-1=${i}`);
+    printLog(`  • 初始结果：reversed=""`);
+    printLog(`  • 反转规则：reversed = reversed + s.charAt(i); i--`);
+    printLog(`\n开始逐步反转：`);
+  });
+
+  stepBtn.addEventListener('click', stepOnce);
+
+  clearBtn.addEventListener('click', ()=>{
+    log.textContent = "";
+  });
+
+  showCodeBtn.addEventListener('click', ()=>{
+    if (codeDisplay.style.display === 'none' || codeDisplay.style.display === '') {
+      codeDisplay.style.display = 'block';
+      showCodeBtn.textContent = '隐藏Java代码';
+      showCodeBtn.style.background = 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)';
+    } else {
+      codeDisplay.style.display = 'none';
+      showCodeBtn.textContent = '显示Java代码答案';
+      showCodeBtn.style.background = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
+    }
+  });
+
+  // 复制代码功能
+  window.copyCode = function() {
+    const codeText = document.getElementById('javaCode').textContent;
+    navigator.clipboard.writeText(codeText).then(() => {
+      const copyBtn = document.querySelector('.copy-btn');
+      const originalText = copyBtn.textContent;
+      copyBtn.textContent = '已复制!';
+      copyBtn.style.background = '#10b981';
+      setTimeout(() => {
+        copyBtn.textContent = originalText;
+        copyBtn.style.background = '#3b82f6';
+      }, 2000);
+    }).catch(err => {
+      console.error('复制失败:', err);
+      alert('复制失败，请手动选择代码复制');
+    });
+  };
+
+  autoBtn.addEventListener('click', ()=>{
+    if (!timer){
+      autoBtn.textContent = '暂停';
+      timer = setInterval(()=>{
+        if (i < 0){ clearInterval(timer); timer=null; autoBtn.textContent='自动播放'; return; }
+        stepOnce();
+      }, 500);
+    } else {
+      clearInterval(timer); timer=null;
+      autoBtn.textContent = '自动播放';
+    }
+  });
+
+  resetBtn.addEventListener('click', ()=>{
+    if (timer){ clearInterval(timer); timer=null; autoBtn.textContent='自动播放'; }
+    s=""; i=-1; reversed=""; txt.value="";
+    lenOut.textContent = iOut.textContent = curOut.textContent = '-';
+    revOut.textContent = '""'; log.textContent = "";
+    finalResult.style.display = 'none';
+    clearBoard(); setButtons(false);
+  });
+
+  // 让窗口变化时指针重新定位
+  window.addEventListener('resize', movePointer);
+</script>
+</body>
+</html>

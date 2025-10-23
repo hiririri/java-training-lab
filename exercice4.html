@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>练习4：大小写交替 · 动态演示</title>
+<style>
+  :root{
+    --box:64px;            /* 每个字符方块的尺寸 */
+    --gap:12px;            /* 方块间距 */
+  }
+  body{
+    font-family: "Segoe UI","PingFang SC","Microsoft Yahei",system-ui,-apple-system,sans-serif;
+    background:#f6f7fb; color:#222; margin:0; padding:24px;
+  }
+  h1{ margin:0 0 12px; font-size:20px; }
+  .card{ background:#fff; border-radius:12px; box-shadow:0 8px 24px rgba(0,0,0,.06); padding:16px; }
+  .row{ display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+  input[type=text]{ padding:10px 12px; border:1px solid #ddd; border-radius:8px; min-width:240px; font-size:16px; }
+  button{
+    padding:10px 14px; border:0; border-radius:10px; cursor:pointer; font-size:14px;
+    background:#2b6cff; color:#fff;
+  }
+  button.ghost{ background:#eef2ff; color:#2b6cff; }
+  button:disabled{ opacity:.6; cursor:not-allowed; }
+  .board-wrap{ margin-top:18px; overflow-x:auto; padding-bottom:8px; }
+  .board{
+    display:flex; align-items:flex-start; gap:var(--gap); position:relative; padding:12px 0 38px;
+    min-height: calc(var(--box) + 46px);
+  }
+  .cell{
+    width:var(--box); height:var(--box); border-radius:14px; border:2px solid #d9dff0;
+    background:#fff; display:flex; align-items:center; justify-content:center;
+    font-size:26px; font-weight:600; position:relative; flex:0 0 auto;
+  }
+  .cell.dim{ opacity:.35; }
+  .cell.active{ border-color:#2b6cff; background:#eef2ff; }
+  .cell.processed{ border-color:#10b981; background:#ecfdf5; }
+  .cell.uppercase{ border-color:#f59e0b; background:#fef3c7; }
+  .cell.lowercase{ border-color:#8b5cf6; background:#f3e8ff; }
+  .index{
+    position:absolute; bottom:-28px; left:0; width:100%; text-align:center; font-size:12px; color:#667;
+  }
+  .ascii{
+    position:absolute; top:-28px; left:0; width:100%; text-align:center; font-size:11px; color:#2b6cff; font-weight:600;
+  }
+  .pattern{
+    position:absolute; top:-50px; left:0; width:100%; text-align:center; font-size:10px; color:#ef4444; font-weight:600;
+  }
+  /* 指针箭头 */
+  .pointer{
+    position:absolute; top:-30px; width:0; height:0; border-left:10px solid transparent;
+    border-right:10px solid transparent; border-bottom:12px solid #2b6cff; transition:transform .25s ease;
+  }
+  .pointer-label{
+    position:absolute; top:-50px; transform:translateX(-50%); background:#2b6cff; color:#fff;
+    padding:2px 8px; border-radius:999px; font-size:12px; white-space:nowrap;
+  }
+  .status{ margin-top:16px; line-height:1.9; }
+  code{ background:#f1f3fb; border-radius:6px; padding:2px 6px; }
+  .steps{ 
+    margin-top:10px; font-family:ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; 
+    white-space:pre-wrap; height:400px; overflow-y:auto; padding:12px; 
+    background:#f8fafc; border-radius:8px; border:1px solid #e2e8f0;
+    font-size:13px; line-height:1.4;
+  }
+  .steps::-webkit-scrollbar {
+    width: 8px;
+  }
+  .steps::-webkit-scrollbar-track {
+    background: #f1f5f9;
+    border-radius: 4px;
+  }
+  .steps::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 4px;
+  }
+  .steps::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
+  }
+  
+  /* 响应式设计 */
+  @media (max-width: 768px) {
+    .flex-layout {
+      flex-direction: column !important;
+    }
+    .flex-layout > div:last-child {
+      border-left: none !important;
+      padding-left: 0 !important;
+      border-top: 2px solid #e2e8f0;
+      padding-top: 20px;
+      margin-top: 20px;
+    }
+    .steps {
+      height: 250px !important;
+    }
+  }
+  .muted{ color:#6b7280; }
+  .code-btn {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    margin-left: 8px;
+  }
+  .code-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+  }
+  .code-display {
+    margin-top: 16px;
+    padding: 16px;
+    background: #1e293b;
+    border-radius: 8px;
+    border: 1px solid #334155;
+    display: none;
+  }
+  .code-display pre {
+    color: #e2e8f0;
+    font-family: 'Fira Code', 'Monaco', 'Consolas', monospace;
+    font-size: 13px;
+    line-height: 1.5;
+    margin: 0;
+    white-space: pre-wrap;
+  }
+  .code-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid #334155;
+  }
+  .code-title {
+    color: #f1f5f9;
+    font-weight: 600;
+    font-size: 14px;
+  }
+  .copy-btn {
+    background: #3b82f6;
+    color: white;
+    border: none;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    cursor: pointer;
+    transition: background 0.2s ease;
+  }
+  .copy-btn:hover {
+    background: #2563eb;
+  }
+  .result{ 
+    margin-top:16px; padding:12px; background:#f0f9ff; border-radius:8px; border-left:4px solid #2b6cff;
+    font-size:18px; font-weight:600; color:#1e40af;
+  }
+  .calculation{
+    margin-top:8px; font-size:14px; color:#374151;
+  }
+</style>
+</head>
+<body>
+
+<h1>练习4：大小写交替（动态过程）</h1>
+
+<div class="card">
+  <div class="row">
+    <input id="txt" type="text" placeholder="例如：hello" />
+    <div style="font-size:12px; color:#666; margin-top:4px;">
+      试试这些例子：hello(HeLlO), world(WoRlD), example(ExAmPlE), test(TeSt)
+    </div>
+    <button id="start">开始</button>
+    <button id="step" class="ghost" disabled>下一步</button>
+    <button id="auto" class="ghost" disabled>自动播放</button>
+    <button id="clear" class="ghost">清空日志</button>
+    <button id="reset" class="ghost" disabled>重置</button>
+    <button id="showCode" class="code-btn">显示Java代码答案</button>
+  </div>
+
+  <!-- 左右分栏布局 -->
+  <div class="flex-layout" style="display:flex; gap:20px; margin-top:18px;">
+    <!-- 左侧：可视化演示 -->
+    <div style="flex:1;">
+      <div class="board-wrap">
+        <div id="board" class="board">
+          <!-- 动态注入：方块 + 指针 -->
+        </div>
+      </div>
+
+      <div class="status">
+        <div>长度：<code id="len">-</code>，初始化：<code>int i = 0, result = "", shouldUpper = true</code></div>
+        <div>当前位置：<code id="pos">-</code>，当前字符：<code id="cur">-</code></div>
+        <div>当前模式：<code id="mode">-</code>，累计结果：<code id="result">""</code></div>
+        <div class="muted">转换规则：<code>if (shouldUpper) ch = toupper(ch); else ch = tolower(ch); shouldUpper = !shouldUpper;</code></div>
+      </div>
+    </div>
+
+    <!-- 右侧：执行日志 -->
+    <div style="flex:1; border-left:2px solid #e2e8f0; padding-left:20px;">
+      <div style="font-weight:600; color:#374151; margin-bottom:8px;">📝 执行日志：</div>
+      <div class="steps" id="log"></div>
+    </div>
+  </div>
+
+  <div class="explanation" style="margin-top:16px; padding:12px; background:#f8fafc; border-radius:8px; border-left:4px solid #3b82f6;">
+    <div style="font-weight:600; color:#1e40af; margin-bottom:8px;">💡 为什么要用这个算法？</div>
+    <div style="font-size:14px; line-height:1.6; color:#374151;">
+      <div><strong>🔄 大小写交替的原理：</strong></div>
+      <div style="margin:6px 0;">• 交替模式就是大写和小写字母轮流出现</div>
+      <div style="margin:6px 0;">• 例如：hello → HeLlO（第1个字母大写，第2个字母小写，以此类推）</div>
+      
+      <div style="margin:8px 0; padding:8px; background:#fff; border-radius:6px; font-family:monospace;">
+        <div style="text-align:center; margin-bottom:4px;"><strong>交替模式（以hello为例）</strong></div>
+        <div style="display:flex; justify-content:space-around; text-align:center;">
+          <div>原字符: h e l l o</div>
+        </div>
+        <div style="display:flex; justify-content:space-around; text-align:center; color:#2b6cff;">
+          <div>位置: 0 1 2 3 4</div>
+        </div>
+        <div style="display:flex; justify-content:space-around; text-align:center; color:#10b981;">
+          <div>模式: 大 小 大 小 大</div>
+        </div>
+        <div style="display:flex; justify-content:space-around; text-align:center; color:#ef4444;">
+          <div>结果: H e L l O</div>
+        </div>
+        <div style="text-align:center; margin-top:4px; color:#f59e0b;">
+          规律: 偶数位置(0,2,4...)大写，奇数位置(1,3,5...)小写
+        </div>
+      </div>
+      
+      <div style="margin:12px 0 6px 0;"><strong>🧮 算法原理：</strong></div>
+      <div style="margin:6px 0;">• 使用一个布尔变量记录当前应该用大写还是小写</div>
+      <div style="margin:6px 0;">• 从左到右遍历每个字符</div>
+      <div style="margin:6px 0;">• 根据当前位置决定转换方向，然后切换模式</div>
+      
+      <div style="margin:12px 0 6px 0;"><strong>🎯 为什么用布尔变量？</strong></div>
+      <div style="margin:6px 0;">• 布尔变量可以简单地在true/false之间切换</div>
+      <div style="margin:6px 0;">• true表示应该转换为大写，false表示应该转换为小写</div>
+      <div style="margin:6px 0;">• 每处理一个字符后，用!操作符切换状态</div>
+    </div>
+  </div>
+  
+  <div id="finalResult" class="result" style="display:none;">
+    <div>最终结果：<span id="alternatingValue">-</span></div>
+    <div class="calculation" id="calculation"></div>
+  </div>
+
+  <!-- Java代码答案显示区域 -->
+  <div id="codeDisplay" class="code-display">
+    <div class="code-header">
+      <div class="code-title">📝 Java代码答案 - 大小写交替</div>
+      <button class="copy-btn" onclick="copyCode()">复制代码</button>
+    </div>
+    <pre id="javaCode">
+    public static void exercice4() {
+      Scanner sc = new Scanner(System.in);
+      System.out.print("请输入字符串: ");
+      String s = sc.nextLine();
+
+      String result = "";
+      boolean shouldUpper = true; // true 表示该位置要用大写，false 表示小写
+
+      // 遍历字符串
+      for (int i = 0; i < s.length(); i++) {
+          char ch = s.charAt(i);
+
+          if (shouldUpper) {
+              // 当前该大写
+              if (ch >= 'a' && ch <= 'z') {
+                  ch = (char)(ch - 32); // 转大写
+              }
+          } else {
+              // 当前该小写
+              if (ch >= 'A' && ch <= 'Z') {
+                  ch = (char)(ch + 32); // 转小写
+              }
+          }
+
+          result += ch;           // 拼接结果
+          shouldUpper = !shouldUpper; // 每次切换状态
+      }
+
+      System.out.println("原字符串: " + s);
+      System.out.println("交替后: " + result);
+    }
+    </pre>
+  </div>
+</div>
+
+<script>
+  const $ = sel => document.querySelector(sel);
+  const txt = $('#txt'), startBtn = $('#start'), stepBtn = $('#step'),
+        autoBtn = $('#auto'), clearBtn = $('#clear'), resetBtn = $('#reset'),
+        showCodeBtn = $('#showCode'), codeDisplay = $('#codeDisplay'),
+        board = $('#board'), lenOut = $('#len'), posOut = $('#pos'),
+        curOut = $('#cur'), modeOut = $('#mode'), resultOut = $('#result'),
+        log = $('#log'), finalResult = $('#finalResult'),
+        alternatingValue = $('#alternatingValue'), calculation = $('#calculation');
+
+  let s = "", i = 0, result = "", shouldUpper = true, timer = null;
+
+  function clearBoard(){
+    board.innerHTML = "";
+  }
+
+  function renderBoard(){
+    clearBoard();
+    // 指针
+    const pointer = document.createElement('div');
+    pointer.className = 'pointer';
+    const plabel = document.createElement('div');
+    plabel.className = 'pointer-label';
+    plabel.textContent = 'i';
+    board.appendChild(pointer);
+    board.appendChild(plabel);
+
+    // 方块
+    for (let k=0; k<s.length; k++){
+      const div = document.createElement('div');
+      div.className = 'cell';
+      if (k < i) div.classList.add('processed');
+      else if (k === i) div.classList.add('active');
+      div.dataset.idx = k;
+      const ch = s[k];
+      const ascii = ch.charCodeAt(0);
+      const isEven = k % 2 === 0;
+      div.innerHTML = `
+        <span>${ch}</span>
+        <div class="index">${k}</div>
+        <div class="ascii">${ascii}</div>
+        <div class="pattern">${isEven ? '大' : '小'}</div>
+      `;
+      board.appendChild(div);
+    }
+
+    // 定位指针到第 i 个方块上方
+    movePointer();
+  }
+
+  function movePointer(){
+    const pointer = board.querySelector('.pointer');
+    const label = board.querySelector('.pointer-label');
+    if (i >= s.length) {
+      // 移到最右侧之外
+      const lastCell = board.querySelector('.cell:last-child');
+      if (lastCell) {
+        const rect = lastCell.getBoundingClientRect();
+        const boardRect = board.getBoundingClientRect();
+        const centerX = rect.left - boardRect.left + rect.width/2 + 76; // 76 = gap + box width
+        pointer.style.transform = `translateX(${centerX - 10}px)`;
+        label.style.left = `${centerX}px`;
+      }
+      return;
+    }
+    const target = Array.from(board.querySelectorAll('.cell')).find(c => +c.dataset.idx === i);
+    if (!target) return;
+    const rect = target.getBoundingClientRect();
+    const boardRect = board.getBoundingClientRect();
+    // 指针水平居中于目标 cell
+    const centerX = rect.left - boardRect.left + rect.width/2;
+    pointer.style.transform = `translateX(${centerX - 10}px)`;
+    label.style.left = `${centerX}px`;
+  }
+
+  function setButtons(running){
+    stepBtn.disabled = !running;
+    autoBtn.disabled = !running;
+    resetBtn.disabled = !running;
+  }
+
+  function printLog(line, addTimestamp = false){
+    const timestamp = addTimestamp ? `[${new Date().toLocaleTimeString()}] ` : '';
+    log.textContent += timestamp + line + '\n';
+    // 确保日志区域滚动到底部
+    setTimeout(() => {
+      log.scrollTop = log.scrollHeight;
+    }, 10);
+  }
+
+  function printExplanation(step, ch, ascii, shouldUpper, newCh, newAscii){
+    let explanation = `步骤 ${step}: 处理字符 s[${step-1}]='${ch}'\n`;
+    explanation += `  • ASCII值：${ascii}\n`;
+    explanation += `  • 当前位置：${step-1}（${(step-1) % 2 === 0 ? '偶数' : '奇数'}位置）\n`;
+    explanation += `  • 当前模式：${shouldUpper ? '大写' : '小写'}\n`;
+    
+    if (shouldUpper) {
+      if (ch >= 'a' && ch <= 'z') {
+        explanation += `  • 转换：'${ch}' (${ascii}) - 32 = '${newCh}' (${newAscii})\n`;
+        explanation += `  • 算法：ch = ch - 'a' + 'A' = ${ascii} - 97 + 65 = ${newAscii}\n`;
+      } else {
+        explanation += `  • 字符已是大写，保持不变：'${ch}'\n`;
+      }
+    } else {
+      if (ch >= 'A' && ch <= 'Z') {
+        explanation += `  • 转换：'${ch}' (${ascii}) + 32 = '${newCh}' (${newAscii})\n`;
+        explanation += `  • 算法：ch = ch - 'A' + 'a' = ${ascii} - 65 + 97 = ${newAscii}\n`;
+      } else {
+        explanation += `  • 字符已是小写，保持不变：'${ch}'\n`;
+      }
+    }
+    
+    explanation += `  • 添加到结果：result += '${newCh}'\n`;
+    explanation += `  • 切换模式：shouldUpper = ${shouldUpper} → ${!shouldUpper}\n`;
+    
+    printLog(explanation);
+  }
+
+  function stepOnce(){
+    if (i < s.length){
+      const ch = s[i];
+      const ascii = ch.charCodeAt(0);
+      let newCh = ch;
+      let newAscii = ascii;
+      
+      if (shouldUpper) {
+        // 应该转换为大写
+        if (ch >= 'a' && ch <= 'z') {
+          newCh = String.fromCharCode(ascii - 32);
+          newAscii = ascii - 32;
+        }
+      } else {
+        // 应该转换为小写
+        if (ch >= 'A' && ch <= 'Z') {
+          newCh = String.fromCharCode(ascii + 32);
+          newAscii = ascii + 32;
+        }
+      }
+      
+      result += newCh;
+      
+      // 视觉：当前处理的 cell 变绿
+      const current = board.querySelector(`.cell[data-idx="${i}"]`);
+      if (current) {
+        current.classList.remove('active');
+        current.classList.add('processed');
+        if (shouldUpper) {
+          current.classList.add('uppercase');
+        } else {
+          current.classList.add('lowercase');
+        }
+        // 更新显示的字符
+        if (newCh !== ch) {
+          current.querySelector('span').textContent = newCh;
+          current.querySelector('.ascii').textContent = newAscii;
+        }
+      }
+
+      // 使用新的详细解释函数
+      printExplanation(i + 1, ch, ascii, shouldUpper, newCh, newAscii);
+      
+      // 切换模式
+      shouldUpper = !shouldUpper;
+      i++;
+      
+      lenOut.textContent = s.length;
+      posOut.textContent = i;
+      curOut.textContent = (i < s.length ? s[i] : '—');
+      modeOut.textContent = (i < s.length ? (shouldUpper ? '大写' : '小写') : '—');
+      resultOut.textContent = `"${result}"`;
+      movePointer();
+      
+      // 更新下一个cell为active
+      if (i < s.length) {
+        const next = board.querySelector(`.cell[data-idx="${i}"]`);
+        if (next) next.classList.add('active');
+      }
+    } else {
+      // 完成
+      printLog(`\n🎉 完成！最终结果 = "${result}"`);
+      printLog(`\n📚 总结：`);
+      printLog(`• 我们使用算法：if (shouldUpper) ch = toupper(ch); else ch = tolower(ch); shouldUpper = !shouldUpper`);
+      printLog(`• 这个算法的原理是：用布尔变量控制大小写转换的方向`);
+      printLog(`• 每处理一个字符后切换模式，实现大小写交替`);
+      
+      stepBtn.disabled = true;
+      autoBtn.textContent = '自动播放';
+      if (timer){ clearInterval(timer); timer=null; }
+      
+      // 显示最终结果
+      finalResult.style.display = 'block';
+      alternatingValue.textContent = result;
+      
+      // 显示转换过程
+      let calcText = '';
+      let tempShouldUpper = true;
+      for (let k = 0; k < s.length; k++) {
+        const ch = s[k];
+        let newCh = ch;
+        
+        if (tempShouldUpper) {
+          if (ch >= 'a' && ch <= 'z') {
+            newCh = String.fromCharCode(ch.charCodeAt(0) - 32);
+          }
+        } else {
+          if (ch >= 'A' && ch <= 'Z') {
+            newCh = String.fromCharCode(ch.charCodeAt(0) + 32);
+          }
+        }
+        
+        if (calcText) calcText += ' + ';
+        calcText += `'${ch}'→'${newCh}'`;
+        tempShouldUpper = !tempShouldUpper;
+      }
+      calcText += ` = "${result}"`;
+      calculation.textContent = calcText;
+    }
+  }
+
+  startBtn.addEventListener('click', ()=>{
+    s = (txt.value ?? "").toString().trim();
+    if (!s.length){ alert('请输入要转换的字符串'); return; }
+    
+    i = 0; result = ""; shouldUpper = true; log.textContent = "";
+    lenOut.textContent = s.length; 
+    posOut.textContent = i; 
+    curOut.textContent = s[i]; 
+    modeOut.textContent = '大写';
+    resultOut.textContent = '""';
+    finalResult.style.display = 'none';
+    
+    renderBoard();
+    setButtons(true);
+    stepBtn.focus();
+    printLog(`🚀 开始转换字符串 "${s}" 为大小写交替`);
+    printLog(`📋 初始化：`);
+    printLog(`  • 字符串长度：${s.length}`);
+    printLog(`  • 从最左边开始：i=0`);
+    printLog(`  • 初始模式：shouldUpper=true（大写）`);
+    printLog(`  • 初始结果：result=""`);
+    printLog(`  • 转换规则：if (shouldUpper) ch = toupper(ch); else ch = tolower(ch); shouldUpper = !shouldUpper`);
+    printLog(`\n开始逐步转换：`);
+  });
+
+  stepBtn.addEventListener('click', stepOnce);
+
+  clearBtn.addEventListener('click', ()=>{
+    log.textContent = '';
+  });
+
+  showCodeBtn.addEventListener('click', ()=>{
+    if (codeDisplay.style.display === 'none' || codeDisplay.style.display === '') {
+      codeDisplay.style.display = 'block';
+      showCodeBtn.textContent = '隐藏Java代码';
+      showCodeBtn.style.background = 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)';
+    } else {
+      codeDisplay.style.display = 'none';
+      showCodeBtn.textContent = '显示Java代码答案';
+      showCodeBtn.style.background = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
+    }
+  });
+
+  // 复制代码功能
+  window.copyCode = function() {
+    const codeText = document.getElementById('javaCode').textContent;
+    navigator.clipboard.writeText(codeText).then(() => {
+      const copyBtn = document.querySelector('.copy-btn');
+      const originalText = copyBtn.textContent;
+      copyBtn.textContent = '已复制!';
+      copyBtn.style.background = '#10b981';
+      setTimeout(() => {
+        copyBtn.textContent = originalText;
+        copyBtn.style.background = '#3b82f6';
+      }, 2000);
+    }).catch(err => {
+      console.error('复制失败:', err);
+      alert('复制失败，请手动选择代码复制');
+    });
+  };
+
+  autoBtn.addEventListener('click', ()=>{
+    if (!timer){
+      autoBtn.textContent = '暂停';
+      timer = setInterval(()=>{
+        if (i >= s.length){ clearInterval(timer); timer=null; autoBtn.textContent='自动播放'; return; }
+        stepOnce();
+      }, 800);
+    } else {
+      clearInterval(timer); timer=null;
+      autoBtn.textContent = '自动播放';
+    }
+  });
+
+  resetBtn.addEventListener('click', ()=>{
+    if (timer){ clearInterval(timer); timer=null; autoBtn.textContent='自动播放'; }
+    s=""; i=0; result=""; shouldUpper=true; txt.value="";
+    lenOut.textContent = posOut.textContent = curOut.textContent = modeOut.textContent = '-';
+    resultOut.textContent = '""'; log.textContent = "";
+    finalResult.style.display = 'none';
+    clearBoard(); setButtons(false);
+  });
+
+  // 让窗口变化时指针重新定位
+  window.addEventListener('resize', movePointer);
+</script>
+</body>
+</html>
